@@ -1,0 +1,40 @@
+# MiniFriend —— VoxCPM-0.5B (v1) 单说话人 LoRA 微调配置
+# 基于官方 conf/voxcpm_v1/voxcpm_finetune_lora.yaml，路径需按服务器实际改。
+
+# 预训练权重目录：HF 缓存里的 VoxCPM-0.5B snapshot，或自行 snapshot_download 的目录
+pretrained_path: /path/on/server/VoxCPM-0.5B
+train_manifest: /path/on/server/data/train.jsonl
+val_manifest: /path/on/server/data/val.jsonl    # 没有就设为 null
+sample_rate: 16000
+
+batch_size: 8           # 16->8：16GB 卡放不下 r=16+proj，配 grad_accum 保持等效批=16
+grad_accum_steps: 2      # 1->2：等效 batch 仍是 16，训练效果不变
+num_workers: 4
+num_iters: 4000          # 2000->4000：单说话人音色需要更多步才稳
+log_interval: 10
+valid_interval: 500
+save_interval: 500
+learning_rate: 0.0001
+weight_decay: 0.01
+warmup_steps: 100
+max_steps: 4000
+max_batch_tokens: 4096   # 8192->4096：限制单批最长 token，避开偶发长批 OOM
+max_grad_norm: 1.0
+
+save_path: /path/on/server/checkpoints/minifriend_lora
+tensorboard: /path/on/server/logs/minifriend_lora
+
+lambdas:
+  loss/diff: 1.0
+  loss/stop: 1.0
+
+# LoRA：加大容量更好地抓音色。r=16/alpha=32 给足表达力；
+# enable_proj=true 让 encoder->lm->dit 的投影层也参与，对说话人贴合有帮助。
+# 若听感发现「过拟合/念字僵硬」，再回退 r=8 或 num_iters=3000。
+lora:
+  enable_lm: true
+  enable_dit: true
+  enable_proj: true
+  r: 16
+  alpha: 32
+  dropout: 0.05

@@ -1,0 +1,50 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Swift build
+app/.build/
+app/MiniFriend.app/
+app/MiniFriend.dSYM/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+voice-service/profiling/
+
+# Voice source (personal audio data, not for public repo)
+voice_source/
+
+# LoRA weights (personal voice, too large for git)
+voice-service/lora/lora_weights.safetensors
+voice-service/lora_v1/
+minifriend_lora.tgz
+voice-service/dit_estimator.onnx
+
+# Avatar intermediates
+avatar/pet_1024.png
+avatar/cutout_full.png
+avatar/out_anime_s060_ip070.png
+avatar/avatar_pixel_preview.png
+avatar/pet_head_preview.png
+avatar/pet_preview.png
+avatar/pet_sprite_preview.png
+
+# THA3 research (large, not core)
+avatar/tha3/
+avatar/stylize_pixel.py
+avatar/stylize.py
+
+# Reference repos
+refs/
+
+# Claude Code internal
+.claude/
+
+# Finetune artifacts (run on server)
+finetune/__pycache__/
+
+# Temp / logs
+*.log
+/tmp/

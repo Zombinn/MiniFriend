@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.minifriend.assistant</string>
+    <key>CFBundleName</key>
+    <string>MiniFriend</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>MiniFriend 需要使用麦克风进行语音输入。</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>MiniFriend 需要语音识别把你的话转成文字。</string>
+    <key>LSUIElement</key>
+    <true/>
+</dict>
+</plist>
