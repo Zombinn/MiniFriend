@@ -1,3 +1,5 @@
+> **[中文](README.md)** · [English](README.en.md) · [한국어](README.ko.md) · [日本語](README.ja.md)
+
 # MiniFriend
 
 macOS 灵动岛风格悬浮桌面 AI 助手。贴合刘海、鼠标悬停展开，支持语音输入输出、本地/远程模型切换、自定义人设与像素风形象。
