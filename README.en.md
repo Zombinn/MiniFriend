@@ -4,8 +4,6 @@
 
 macOS Dynamic Island-style floating desktop AI assistant. Snaps to the notch, expands on hover, supports voice input/output, local/remote model switching, customizable persona, and pixel-art avatar.
 
----
-
 ## Features
 
 - **Dynamic Island UI**: Snaps to the MacBook notch, expands on hover / collapses on leave, blends into the notch with a black background
@@ -15,8 +13,6 @@ macOS Dynamic Island-style floating desktop AI assistant. Snaps to the notch, ex
 - **Pixel Avatar**: Codex Pets-style chibi avatar with procedural breathing/thinking/speaking animations
 - **Local Memory**: Ollama conversation history persisted to disk, continues after restart
 - **Settings Panel**: Assistant name, persona, model selection, TTS toggle, Ollama parameters — all saved in real time
-
----
 
 ## Architecture
 
@@ -63,8 +59,6 @@ MiniFriend/
     └── stylize_pixel.py    # Photo → chibi pixel character
 ```
 
----
-
 ## Quick Start
 
 ### Prerequisites
@@ -110,8 +104,6 @@ python scripts/train_voxcpm_finetune.py --config_path voxcpm_finetune_lora.yaml
 # 3. Download lora_config.json + lora_weights.safetensors from latest/ to voice-service/lora/
 ```
 
----
-
 ## Configuration
 
 All settings can be modified through the in-app gear icon, persisted to:
@@ -140,8 +132,6 @@ All settings can be modified through the in-app gear icon, persisted to:
 | `MF_HOST` | `127.0.0.1` | Service host |
 | `MF_PORT` | `8765` | Service port |
 
----
-
 ## Local Model (Ollama)
 
 ```bash
@@ -154,8 +144,6 @@ ollama pull qwen3.5:4b   # 3.4GB, supports think:false, good anti-repetition
 ```
 
 Switch to "Local Model" in the app settings panel and enter the model name. Fully offline — conversation data never leaves your machine.
-
----
 
 ## Technical Details
 
@@ -174,8 +162,3 @@ Switch to "Local Model" in the app settings panel and enter the model name. Full
 - Claude: Multi-turn context preserved via `--resume session_id`, sessions stored in `~/.claude/projects/-/`
 - Ollama: Messages array maintained in memory + persisted to disk, capped at 10 turns to avoid overflowing KV Cache
 
----
-
-## License
-
-MIT
