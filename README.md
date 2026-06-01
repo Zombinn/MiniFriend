@@ -176,4 +176,3 @@ ollama pull qwen3.5:4b   # 3.4GB，支持 think:false，防复读好
 
 ## License
 
-MIT
