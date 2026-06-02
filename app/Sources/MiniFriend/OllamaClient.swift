@@ -18,6 +18,19 @@ final class OllamaClient: NSObject {
     override init() {
         super.init()
         loadHistory()
+        // 监听「清空历史」通知，同步清空内存里的 messages
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleClearHistory),
+            name: .ollamaHistoryCleared,
+            object: nil
+        )
+    }
+
+    @objc private func handleClearHistory() {
+        task?.cancel()
+        messages = []   // 清空内存，didSet 会自动写空文件
+        NSLog("OllamaClient: 内存历史已清空")
     }
 
     private func loadHistory() {
@@ -95,10 +108,11 @@ final class OllamaClient: NSObject {
         try? FileManager.default.removeItem(at: Self.historyURL)
     }
 
-    /// 清空磁盘历史（供设置面板调用，不影响人设）
+    /// 清空历史（设置面板调用）：同时发通知清空所有实例的内存 messages
     static func clearHistory() {
         try? FileManager.default.removeItem(at: historyURL)
-        NSLog("OllamaClient: 对话历史已清空")
+        NotificationCenter.default.post(name: .ollamaHistoryCleared, object: nil)
+        NSLog("OllamaClient: 历史已清空（磁盘 + 内存）")
     }
 
     private func buildMessages(systemPrompt: String) -> [[String: Any]] {
@@ -137,6 +151,10 @@ final class OllamaClient: NSObject {
             DispatchQueue.main.async { cb?(nil) }
         }
     }
+}
+
+extension Notification.Name {
+    static let ollamaHistoryCleared = Notification.Name("OllamaHistoryCleared")
 }
 
 private func log(_ msg: String) {
