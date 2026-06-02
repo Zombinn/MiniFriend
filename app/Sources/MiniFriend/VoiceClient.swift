@@ -3,7 +3,8 @@ import Foundation
 
 // 把回复发给 /tts 用你的音色播放，并做到「声画同步」：
 // - 按句切分；每句的音频开始播放时，回调 onSentenceStart 让 UI 显示这句文字
-// - 流水线预取：播第 i 句时已在后台合成第 i+1 句，减少句间停顿
+// - 流水线预取：播第 i 句时已在后台合成第 i+1,i+2 句，减少句间停顿
+// - 首句就绪即播，不等全部合成完成
 // 服务未启动时静默跳过。
 final class VoiceClient: NSObject, AVAudioPlayerDelegate {
     private let endpoint: URL
@@ -11,7 +12,9 @@ final class VoiceClient: NSObject, AVAudioPlayerDelegate {
 
     private var sentences: [String] = []
     private var prefetched: [Int: Data] = [:]
-    private var attempted: Set<Int> = []     // 已尝试合成的句子，防无限重试
+    private var attempted: Set<Int> = []          // 已完成合成（成功或失败），防无限重试
+    private var fetching:  Set<Int> = []          // 进行中的请求，防止重复发起
+    private var pendingCallbacks: [Int: [() -> Void]] = [:]  // 等待某句完成的回调队列
     private var idx = 0
     private var gen = 0
     private var started = false
@@ -33,29 +36,64 @@ final class VoiceClient: NSObject, AVAudioPlayerDelegate {
         guard !s.isEmpty else { onFinish(); return }
         gen += 1
         let g = gen
-        sentences = s; idx = 0; prefetched = [:]; attempted = []; started = false
+        sentences = s; idx = 0; prefetched = [:]; attempted = []; fetching = []; pendingCallbacks = [:]; started = false
         onSentence = onSentenceStart; onStartCb = onStart; onFinishCb = onFinish
+        // 先预取第 0 句，合成完成立即开始播放
         fetch(0, g) { [weak self] in self?.play(0, g) }
     }
 
     func stop() {
         gen += 1
         player?.stop(); player = nil
-        sentences = []; prefetched = [:]; attempted = []
+        sentences = []; prefetched = [:]; attempted = []; fetching = []; pendingCallbacks = [:]
         onSentence = nil; onStartCb = nil; onFinishCb = nil
     }
 
     // MARK: - 流水线
 
+    /// 预取第 i 句，并且在后台额外预取后续的 prefetchAhead 句
+    private let prefetchAhead = 2   // 播 i 时并行预取 i+1, i+2
+
     private func fetch(_ i: Int, _ g: Int, then: (() -> Void)? = nil) {
-        // 每句最多请求一次：已成功或已尝试都不再请求，防死循环
-        guard g == gen, i < sentences.count,
-              prefetched[i] == nil, !attempted.contains(i) else { then?(); return }
-        fetchTTS(sentences[i]) { [weak self] data in
-            guard let self, g == self.gen else { return }
-            self.attempted.insert(i)
-            if let data { self.prefetched[i] = data }
-            then?()
+        guard g == gen, i < sentences.count else { then?(); return }
+
+        // 先请求当前句
+        if prefetched[i] != nil || attempted.contains(i) {
+            then?()                                        // 已完成 → 直接回调
+        } else if fetching.contains(i) {
+            // 请求在途：把 then 挂到等待队列，完成后统一触发
+            if let cb = then { pendingCallbacks[i, default: []].append(cb) }
+        } else {
+            fetching.insert(i)
+            fetchTTS(sentences[i]) { [weak self] data in
+                guard let self, g == self.gen else { return }
+                self.fetching.remove(i)
+                self.attempted.insert(i)
+                if let data { self.prefetched[i] = data }
+                then?()
+                // 触发所有等待这句完成的回调（比如 play 在预取途中调用了 fetch）
+                let callbacks = self.pendingCallbacks.removeValue(forKey: i) ?? []
+                callbacks.forEach { $0() }
+            }
+        }
+
+        // 后台并行预取后续句，用 fetching 防重复，绝不提前标记 attempted
+        for ahead in 1...prefetchAhead {
+            let j = i + ahead
+            guard j < sentences.count,
+                  prefetched[j] == nil,
+                  !attempted.contains(j),
+                  !fetching.contains(j) else { continue }
+            fetching.insert(j)
+            fetchTTS(sentences[j]) { [weak self] data in
+                guard let self, g == self.gen else { return }
+                self.fetching.remove(j)
+                self.attempted.insert(j)
+                if let data { self.prefetched[j] = data }
+                // 触发等待这句的回调（play 在预取途中挂进来的）
+                let cbs = self.pendingCallbacks.removeValue(forKey: j) ?? []
+                cbs.forEach { $0() }
+            }
         }
     }
 
@@ -78,7 +116,7 @@ final class VoiceClient: NSObject, AVAudioPlayerDelegate {
             } catch {
                 play(i + 1, g); return
             }
-            fetch(i + 1, g)                                  // 边播边预取下一句
+            fetch(i + 1, g)                                  // 边播边触发下一批预取
             return
         }
         if attempted.contains(i) {                           // 合成失败：显示文字、跳过这句
@@ -161,8 +199,9 @@ final class VoiceClient: NSObject, AVAudioPlayerDelegate {
         let tail = cur.trimmingCharacters(in: .whitespacesAndNewlines)
         if !tail.isEmpty { raw.append(tail) }
 
-        // 二级：过长的句子按逗号再切，单段控制在 ~40 字内（避免 VoxCPM 单句过长卡死）
-        let maxLen = 40
+        // 二级：过长的句子按逗号再切，单段控制在 ~30 字内
+        // 更短的句子 = 更快的单句合成 + 更低的卡死风险
+        let maxLen = 30
         var out: [String] = []
         for s in raw {
             if s.count <= maxLen { out.append(s); continue }

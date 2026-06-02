@@ -101,6 +101,7 @@ struct ContentView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(msg.role == .user ? .white.opacity(0.55) : .white)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
                             .id(msg.id)
                     }
                 }
@@ -136,7 +137,15 @@ struct ContentView: View {
                 .focused($inputFocused)
                 .onSubmit { vm.send() }
                 .onChange(of: speech.transcript) { _, t in
-                    if !t.isEmpty { vm.input = t }   // 识别结果实时填入
+                    if !t.isEmpty { vm.input = t }
+                }
+                .onChange(of: inputFocused) { _, focused in
+                    if focused {
+                        // nonactivatingPanel 不会自动激活 app，Cmd+V 等快捷键会跑到其他应用
+                        // 输入框聚焦时激活 app + 让窗口成为 key，快捷键才能正确路由
+                        NSApp.activate(ignoringOtherApps: true)
+                        NSApp.windows.first(where: { $0 is FloatingPanel })?.makeKeyAndOrderFront(nil)
+                    }
                 }
             Button(action: vm.send) {
                 Image(systemName: "arrow.up.circle.fill")

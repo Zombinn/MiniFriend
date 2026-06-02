@@ -51,7 +51,36 @@ final class FloatingPanel: NSPanel {
     }
 
     override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
+    override var canBecomeMain: Bool { true }
+
+    /// 拦截 Cmd+V/C/X/A，沿 responder chain 找到底层 NSTextView 直接发送命令。
+    /// 不做这个的话，nonactivating panel 里的 SwiftUI TextField 会发出提示音。
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.type == .keyDown,
+              event.modifierFlags.contains(.command) else {
+            return super.performKeyEquivalent(with: event)
+        }
+        let ch = event.characters
+        guard ch == "v" || ch == "c" || ch == "x" || ch == "a" else {
+            return super.performKeyEquivalent(with: event)
+        }
+        // 遍历 responder chain，找到 NSTextView（SwiftUI TextField 的底层视图）
+        var r: NSResponder? = firstResponder
+        while let cur = r {
+            if let tv = cur as? NSTextView {
+                switch ch {
+                case "v": tv.paste(nil)
+                case "c": tv.copy(nil)
+                case "x": tv.cut(nil)
+                case "a": tv.selectAll(nil)
+                default: break
+                }
+                return true
+            }
+            r = cur.nextResponder
+        }
+        return super.performKeyEquivalent(with: event)
+    }
 
     // 固定到屏幕顶部中央的承载区（足够容纳展开态）。
     func positionAtTop() {

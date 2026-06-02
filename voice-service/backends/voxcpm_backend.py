@@ -106,7 +106,7 @@ class VoxCPMBackend(TTSBackend):
         self,
         model_id: str = "openbmb/VoxCPM-0.5B",
         cfg_value: float = 2.0,
-        inference_timesteps: int = 6,      # ts=6 平衡速度与音质（纯 PyTorch ~9s/句，无噪声）
+        inference_timesteps: int = 4,      # ts=4 + ONNX ≈ 3.6s/句；ts=6 质量更稳但稍慢
         load_denoiser: bool = False,
         device: str = "cpu",
         lora_weights_path: str | None = None,
